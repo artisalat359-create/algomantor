@@ -1,55 +1,73 @@
+import os
 import logging
-import openai
+import threading
+import time
+
 import streamlit as st
-
-st.title("My Algo Trading App 🚀")
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 
-# Setup Logging
-logging.basicConfig(level=logging.INFO)
+# ---------- Logging ----------
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# OpenAI API Key
-openai.api_key = "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"
+# ---------- Secrets ----------
+# Streamlit Cloud: Settings -> Secrets me set karo:
+# TELEGRAM_BOT_TOKEN = "123:ABC..."
+# OPENAI_API_KEY = "sk-...."
+TELEGRAM_BOT_TOKEN = st.secrets.get("8131089767:AAGCq2zeHR-sCv9moT6kHT6s-Kpwp9SgcSM") or os.getenv("8131089767:AAGCq2zeHR-sCv9moT6kHT6s-Kpwp9SgcSM")
+OPENAI_API_KEY = st.secrets.get("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") or os.getenv("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")
 
-# --------------------------
-# AI Response Function
-# --------------------------
-def ask_ai(prompt):
+# ---------- OpenAI Client (optional) ----------
+# openai==1.x style
+try:
+    from openai import OpenAI
+    openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+except Exception as e:
+    openai_client = None
+    logger.warning("OpenAI client init failed or not installed: %s", e)
+
+
+def ask_ai(prompt: str) -> str:
+    """Return AI text or a fallback suggestion if key/client missing."""
+    if not openai_client:
+        return "AI is temporarily offline (missing OpenAI key). Technical analysis options niche se choose karo."
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",   # Or "gpt-4"
+        resp = openai_client.chat.completions.create(
+            model="gpt-4o-mini",  # lightweight, sasta & fast
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=200
+            max_tokens=200,
         )
-        return response.choices[0].message["content"].strip()
+        # SDK 1.x returns .choices[0].message.content
+        return resp.choices[0].message.content.strip()
     except Exception as e:
-        return f"⚠️ AI Error: {str(e)}"
+        logger.exception("OpenAI error")
+        return f"⚠️ AI Error: {e}"
 
-# --------------------------
-# Start Command
-# --------------------------
+
+# ======================= Telegram Handlers =======================
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 Welcome to *AI Trading Mentor Bot*!\n\n"
-        "Ask me about any stock/index.\n\n"
-        "Example: 'Nifty ka support batao' or 'BankNifty trend future me kaisa hoga?'\n\n"
-        "Main AI + Technical Analysis dono use karta hoon 📊",
-        parse_mode="Markdown"
+        "Mujhse stock/index ke baare me pucho.\n"
+        "Example: 'Nifty ka support?' ya 'BankNifty trend?'\n\n"
+        "Main AI + Technical Analysis dono use karta hoon. 📊",
+        parse_mode="Markdown",
     )
 
-# --------------------------
-# Handle User Message
-# --------------------------
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text
 
-    # AI se intelligent reply
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_text = update.message.text.strip()
     ai_reply = ask_ai(user_text)
 
-    # Telegram Button Options
     keyboard = [
         [
             InlineKeyboardButton("Support/Resistance", callback_data="levels"),
@@ -63,15 +81,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        f"🤔 *AI Suggestion:*\n{ai_reply}\n\n"
-        "👇 Choose technical analysis option:",
+        f"🤔 *AI Suggestion:*\n{ai_reply}\n\n👇 Choose technical analysis option:",
         reply_markup=reply_markup,
-        parse_mode="Markdown"
+        parse_mode="Markdown",
     )
 
-# --------------------------
-# Handle Buttons
-# --------------------------
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -87,23 +102,42 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.edit_message_text(msg)
 
-# --------------------------
-# Main Function
-# --------------------------
-def main():
-    TOKEN = "8131089767:AAGCq2zeHR-sCv9moT6kHT6s-Kpwp9SgcSM"
 
-    app = Application.builder().token(TOKEN).build()
+def run_telegram_bot():
+    """Run Telegram bot in a background daemon thread to avoid Streamlit event loop clash."""
+    if not TELEGRAM_BOT_TOKEN:
+        logger.error("TELEGRAM_BOT_TOKEN missing. Bot will not start.")
+        return
 
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("🤖 AI Trading Bot is running...")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+    logger.info("Starting Telegram bot polling...")
+    # This call blocks; but we're in a separate daemon thread
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
+# ======================= Streamlit UI =======================
 
+st.set_page_config(page_title="My Algo Trading App", page_icon="🚀")
+st.title("My Algo Trading App 🚀")
+
+# Start bot exactly once per session/server
+if "bot_started" not in st.session_state:
+    thread = threading.Thread(target=run_telegram_bot, daemon=True)
+    thread.start()
+    st.session_state.bot_started = True
+
+st.success("Telegram bot background me run ho raha hai. ✅")
+st.write("**Status**")
+st.write(f"- Telegram Token set: {'✅' if TELEGRAM_BOT_TOKEN else '❌'}")
+st.write(f"- OpenAI Key set: {'✅' if OPENAI_API_KEY else '❌'}")
+
+with st.expander("Quick Test (AI)"):
+    prompt = st.text_input("Kuch bhi pucho (test):", value="Nifty outlook next week?")
+    if st.button("Ask AI"):
+        st.write(ask_ai(prompt))
+
+st.caption("Tip: Streamlit Secrets me `TELEGRAM_BOT_TOKEN` & `OPENAI_API_KEY` add karo.")
