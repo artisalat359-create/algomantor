@@ -1,6 +1,9 @@
 import logging
 import openai
-import streamlit_app
+import streamlit as st
+
+st.title("My Algo Trading App 🚀")
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
@@ -101,5 +104,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
