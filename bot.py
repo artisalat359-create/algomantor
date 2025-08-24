@@ -140,5 +140,6 @@ with st.expander("Quick Test (AI)"):
     if st.button("Ask AI"):
         st.write(ask_ai(prompt))
 
-st.caption("Tip: Streamlit Secrets me `8131089767:AAGCq2zeHR-sCv9moT6kHT6s-Kpwp9SgcSM` & `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` add karo.")
+st.caption("Tip: Streamlit Secrets me `` & `` add karo.")
+
 
