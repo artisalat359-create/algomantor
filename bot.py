@@ -1,6 +1,6 @@
 import logging
 import openai
-import streamlit_app.py
+import streamlit_app
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
@@ -101,4 +101,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
