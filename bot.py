@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 # Streamlit Cloud: Settings -> Secrets me set karo:
 # TELEGRAM_BOT_TOKEN = "123:ABC..."
 # OPENAI_API_KEY = "sk-...."
-TELEGRAM_BOT_TOKEN = st.secrets.get("8131089767:AAGCq2zeHR-sCv9moT6kHT6s-Kpwp9SgcSM") or os.getenv("8131089767:AAGCq2zeHR-sCv9moT6kHT6s-Kpwp9SgcSM")
-OPENAI_API_KEY = st.secrets.get("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") or os.getenv("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")
+TELEGRAM_BOT_TOKEN = st.secrets.get("TELEGRAM_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
 # ---------- OpenAI Client (optional) ----------
 # openai==1.x style
@@ -141,5 +141,6 @@ with st.expander("Quick Test (AI)"):
         st.write(ask_ai(prompt))
 
 st.caption("Tip: Streamlit Secrets me `` & `` add karo.")
+
 
 
